@@ -156,6 +156,19 @@ function renderEmotes(text,emotes){
   return twitchHtml;
 }
 async function loadSevenTV(){
+  const addSet=async(setId)=>{
+    if(!setId)return;
+    try{
+      const response=await fetch('https://7tv.io/v3/emote-sets/'+encodeURIComponent(setId));
+      if(!response.ok)return;
+      const data=await response.json();
+      for(const e of (data.emotes||[])){
+        const id=e.id||e.data?.id, name=e.name;
+        if(id&&name)sevenTV.set(name,'https://cdn.7tv.app/emote/'+id+'/3x.webp');
+      }
+    }catch(e){}
+  };
+
   try{
     const response=await fetch('https://7tv.io/v3/emote-sets/global');
     if(response.ok){
@@ -171,25 +184,22 @@ async function loadSevenTV(){
     const idResponse=await fetch('https://decapi.me/twitch/id/'+encodeURIComponent(channel));
     if(idResponse.ok){
       const twitchId=(await idResponse.text()).trim();
-      if(/^\d+$/.test(twitchId)){
+      if(/^\\d+$/.test(twitchId)){
         const userResponse=await fetch('https://7tv.io/v3/users/twitch/'+encodeURIComponent(twitchId));
         if(userResponse.ok){
           const userData=await userResponse.json();
-          const set=userData?.emote_set;
-          for(const e of (set?.emotes||[])){
-            const id=e.id||e.data?.id, name=e.name;
-            if(id&&name)sevenTV.set(name,'https://cdn.7tv.app/emote/'+id+'/3x.webp');
-          }
+          const setId=userData?.emote_set?.id;
+          await addSet(setId);
         }
       }
     }
   }catch(e){}
 
   if(sevenTV.size){
-    const names=[...sevenTV.keys()]
+    sevenTVRegex=new RegExp('(^|\\s)('+[...sevenTV.keys()]
       .sort((a,b)=>b.length-a.length)
-      .map(s=>s.replace(/[.*+?^$()|[\\]\\\\]/g,'\\\\$&'));
-    sevenTVRegex=new RegExp('(^|\\\\s)('+names.join('|')+')(?!\\\\S)','g');
+      .map(s=>s.replace(/[.*+?^$()|[\\\\]\\\\]/g,'\\\\$&'))
+      .join('|')+')(?!\\S)','g');
   }
 }
 
