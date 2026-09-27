@@ -115,8 +115,26 @@ const chat=document.getElementById('chat');
 const sevenTV=new Map();
 let sevenTVRegex=null;
 
+const sevenTVImageCache=new Map();
+
+function preloadSevenTVImage(name,url){
+  if(sevenTVImageCache.has(name))return sevenTVImageCache.get(name);
+  const promise=new Promise(resolve=>{
+    const img=new Image();
+    img.decoding='async';
+    img.onload=()=>resolve(url);
+    img.onerror=()=>resolve(url);
+    img.src=url;
+  });
+  sevenTVImageCache.set(name,promise);
+  return promise;
+}
+
 function sevenTVImageHtml(name,url){
-  return '<img class="emote" alt="'+escapeHtml(name)+'" title="'+escapeHtml(name)+'" src="'+url+'" data-7tv-url="'+url+'" data-7tv-retry="0" onerror="retrySevenTVImage(this)">';
+  // The browser cache/preload makes animated WebP start much faster when
+  // the same emote appears repeatedly.
+  preloadSevenTVImage(name,url);
+  return '<img class="emote" alt="'+escapeHtml(name)+'" title="'+escapeHtml(name)+'" src="'+url+'" loading="eager" decoding="async" fetchpriority="high" data-7tv-url="'+url+'" data-7tv-retry="0" onerror="retrySevenTVImage(this)">';
 }
 
 function retrySevenTVImage(img){
@@ -293,6 +311,8 @@ async function loadSevenTV(){
   }catch(err){
     console.warn('7TV channel fetch failed:',err);
   }
+
+  for(const [name,url] of sevenTV)preloadSevenTVImage(name,url);
 
   console.info('7TV emotes loaded:',sevenTV.size);
 
