@@ -222,19 +222,47 @@ async function loadSevenTV(){
     }
   }
 
-  // Channel 7TV emotes
+  // Channel 7TV emotes.
+  // We know the 7TV user ID for FerKLives, so use it directly instead of
+  // depending on DecAPI/Twitch ID resolution.
+  const known7TVUserId='01KZW572HQWZRZBBZN5YM7EB71';
   try{
-    const idResponse=await fetch('https://decapi.me/twitch/id/'+encodeURIComponent(channel),{cache:'no-store'});
-    if(idResponse.ok){
-      const twitchId=(await idResponse.text()).trim();
-      if(/^\d+$/.test(twitchId)){
-        const userResponse=await fetch('https://7tv.io/v3/users/twitch/'+encodeURIComponent(twitchId),{cache:'no-store'});
-        if(userResponse.ok){
-          const userData=await userResponse.json();
-          const setId=userData?.emote_set?.id || userData?.emote_sets?.[0]?.id;
-          await addSet(setId);
+    const userUrls=[
+      'https://7tv.io/v3/users/'+encodeURIComponent(known7TVUserId),
+      'https://api.7tv.app/v3/users/'+encodeURIComponent(known7TVUserId)
+    ];
+    let userData=null;
+    for(const url of userUrls){
+      try{
+        const response=await fetch(url,{cache:'no-store'});
+        if(response.ok){
+          userData=await response.json();
+          console.info('7TV user loaded from:',url,userData);
+          break;
         }
+      }catch(err){
+        console.warn('7TV user fetch failed:',url,err);
       }
+    }
+
+    if(userData){
+      const setIds=new Set();
+
+      // Current/legacy shapes.
+      if(userData?.emote_set?.id)setIds.add(userData.emote_set.id);
+      for(const s of (userData?.emote_sets||[])){
+        if(s?.id)setIds.add(s.id);
+      }
+
+      // User connection shape: Twitch connection -> emote_set_id.
+      for(const c of (userData?.connections||[])){
+        if(c?.emote_set_id)setIds.add(c.emote_set_id);
+        if(c?.emote_set?.id)setIds.add(c.emote_set.id);
+      }
+
+      console.info('7TV channel set IDs:',[...setIds]);
+
+      for(const setId of setIds) await addSet(setId);
     }
   }catch(err){
     console.warn('7TV channel fetch failed:',err);
