@@ -112,6 +112,8 @@ const channel=(params.get('channel')||'FerKLives').replace(/^#/,'').toLowerCase(
 const maxMessages=Math.max(1,Math.min(50,parseInt(params.get('max')||'12',10)));
 const lifetime=Math.max(0,parseInt(params.get('time')||'0',10));
 const chat=document.getElementById('chat');
+const sevenTV=new Map();
+let sevenTVRegex=null;
 
 function addSystem(text){
   const el=document.createElement('div');
@@ -126,27 +128,75 @@ function escapeHtml(s){
   return d.innerHTML;
 }
 function renderEmotes(text,emotes){
-  if(!emotes)return escapeHtml(text);
-  const ranges=[];
-  for(const group of emotes.split('/')){
-    const [id,positions]=group.split(':');
-    if(!positions)continue;
-    for(const range of positions.split(',')){
-      const [a,b]=range.split('-').map(Number);
-      ranges.push({a,b,id});
+  let twitchHtml=escapeHtml(text);
+  if(emotes){
+    const ranges=[];
+    for(const group of emotes.split('/')){
+      const [id,positions]=group.split(':');
+      if(!positions)continue;
+      for(const range of positions.split(',')){
+        const [a,b]=range.split('-').map(Number);
+        ranges.push({a,b,id});
+      }
     }
+    ranges.sort((x,y)=>x.a-y.a);
+    let out='',cursor=0;
+    for(const r of ranges){
+      if(r.a<cursor)continue;
+      out+=escapeHtml(text.slice(cursor,r.a));
+      const src='https://static-cdn.jtvnw.net/emoticons/v2/'+r.id+'/default/dark/2.0';
+      out+='<img class="emote" alt="" src="'+src+'">';
+      cursor=r.b+1;
+    }
+    twitchHtml=out+escapeHtml(text.slice(cursor));
   }
-  ranges.sort((x,y)=>x.a-y.a);
-  let out='',cursor=0;
-  for(const r of ranges){
-    if(r.a<cursor)continue;
-    out+=escapeHtml(text.slice(cursor,r.a));
-    const src='https://static-cdn.jtvnw.net/emoticons/v2/'+r.id+'/default/dark/2.0';
-    out+='<img class="emote" alt="" src="'+src+'">';
-    cursor=r.b+1;
+  if(sevenTVRegex){
+    return twitchHtml.replace(sevenTVRegex,(match)=>'<img class="emote" alt="'+escapeHtml(match)+'" title="'+escapeHtml(match)+'" src="'+sevenTV.get(match)+'">');
   }
-  return out+escapeHtml(text.slice(cursor));
+  return twitchHtml;
 }
+async function loadSevenTV(){
+  try{
+    const response=await fetch('https://7tv.io/v3/emote-sets/global');
+    if(response.ok){
+      const data=await response.json();
+      for(const e of (data.emotes||[])){
+        const id=e.id||e.data?.id, name=e.name;
+        if(id&&name)sevenTV.set(name,'https://cdn.7tv.app/emote/'+id+'/3x.webp');
+      }
+    }
+  }catch(e){}
+
+  try{
+    const idResponse=await fetch('https://decapi.me/twitch/id/'+encodeURIComponent(channel));
+    if(idResponse.ok){
+      const twitchId=(await idResponse.text()).trim();
+      if(/^\d+$/.test(twitchId)){
+        const userResponse=await fetch('https://7tv.io/v3/users/twitch/'+encodeURIComponent(twitchId));
+        if(userResponse.ok){
+          const userData=await userResponse.json();
+          const setId=userData?.emote_set?.id||userData?.emote_sets?.[0]?.id;
+          if(setId){
+            const setResponse=await fetch('https://api.7tv.app/v3/emote-sets/'+encodeURIComponent(setId));
+            if(setResponse.ok){
+              const setData=await setResponse.json();
+              for(const e of (setData.emotes||[])){
+                const id=e.id||e.data?.id, name=e.name;
+                if(id&&name)sevenTV.set(name,'https://cdn.7tv.app/emote/'+id+'/3x.webp');
+              }
+            }
+          }
+        }
+      }
+    }
+  }catch(e){}
+
+  if(sevenTV.size){
+    const names=[...sevenTV.keys()].sort((a,b)=>b.length-a.length).map(s=>s.replace(/[.*+?^()|[\\]\\\\]/g,'\\\\function addMessage(user,color,text,emotes){'));
+    sevenTVRegex=new RegExp('(?<!\\\\S)('+names.join('|')+')(?!\\\\S)','g');
+  }
+}
+
 function addMessage(user,color,text,emotes){
   const el=document.createElement('div');
   el.className='message';
@@ -241,7 +291,7 @@ function connect(){
   };
   ws.onerror=()=>{};
 }
-connect();
+loadSevenTV().finally(connect);
 </script>
 </body>
 </html>
