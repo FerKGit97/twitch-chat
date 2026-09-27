@@ -3,155 +3,49 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Twitch Chat Overlay</title>
+<title>FerKLives - Twitch Chat</title>
 <style>
-:root{
-  --chat-width:100%;
-  --font:Arial,Helvetica,sans-serif;
-  --text:#fff;
-  --name:#7ee7ff;
-  --message-bg:rgba(10,18,30,.82);
-  --name-bg:rgba(20,30,48,.92);
-  --radius:14px;
-  --gap:8px;
-  --shadow:0 3px 12px rgba(0,0,0,.35);
-}
-*{box-sizing:border-box}
-html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent}
-#chat{
-  width:var(--chat-width);
-  height:100%;
-  padding:10px;
-  display:flex;
-  flex-direction:column;
-  justify-content:flex-end;
-  gap:var(--gap);
-  font-family:var(--font);
-  color:var(--text);
-}
-.message{
-  display:block;
-  width:max-content;
-  max-width:100%;
-  animation:in .22s ease-out;
-  filter:drop-shadow(var(--shadow));
-}
-.name{
-  display:inline-block;
-  margin-bottom:2px;
-  padding:3px 8px;
-  border-radius:9px 9px 4px 4px;
-  background:var(--name-bg);
-  color:var(--name);
-  font-weight:800;
-  font-size:14px;
-}
-.body{
-  padding:8px 11px;
-  border-radius:4px var(--radius) var(--radius) var(--radius);
-  background:var(--message-bg);
-  font-size:17px;
-  line-height:1.3;
-  overflow-wrap:anywhere;
-}
+:root{--chat-width:100%;--font:Arial,Helvetica,sans-serif;--text:#fff;--name:#7ee7ff;--message-bg:rgba(10,18,30,.82);--name-bg:rgba(20,30,48,.92);--radius:14px;--gap:8px;--shadow:0 3px 12px rgba(0,0,0,.35)}
+*{box-sizing:border-box} html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent}
+#chat{width:var(--chat-width);height:100%;padding:10px;display:flex;flex-direction:column;justify-content:flex-end;gap:var(--gap);font-family:var(--font);color:var(--text)}
+.message{display:block;width:max-content;max-width:100%;animation:in .22s ease-out;filter:drop-shadow(var(--shadow))}
+.name{display:inline-block;margin-bottom:2px;padding:3px 8px;border-radius:9px 9px 4px 4px;background:var(--name-bg);color:var(--name);font-weight:800;font-size:14px}
+.body{padding:8px 11px;border-radius:4px var(--radius) var(--radius) var(--radius);background:var(--message-bg);font-size:17px;line-height:1.3;overflow-wrap:anywhere}
 .body img.emote{height:24px;vertical-align:middle;margin:-3px 1px}
 @keyframes in{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
-.fade{animation:fade .35s ease forwards}
-@keyframes fade{to{opacity:0;transform:translateY(-8px)}}
-.system{
-  align-self:center;
-  color:rgba(255,255,255,.55);
-  font-size:12px;
-}
+.fade{animation:fade .35s ease forwards}@keyframes fade{to{opacity:0;transform:translateY(-8px)}}
+.system{align-self:center;color:rgba(255,255,255,.55);font-size:12px}
 </style>
 </head>
-<body>
-<div id="chat"></div>
+<body><div id="chat"></div>
 <script>
 const params=new URLSearchParams(location.search);
-const channel=(params.get('channel')||'').replace(/^#/,'').toLowerCase();
+const channel=(params.get('channel')||'FerKLives').replace(/^#/,'').toLowerCase();
 const maxMessages=Math.max(1,Math.min(50,parseInt(params.get('max')||'12',10)));
 const lifetime=Math.max(0,parseInt(params.get('time')||'0',10));
 const chat=document.getElementById('chat');
-
-function addSystem(text){
-  const el=document.createElement('div');
-  el.className='system';
-  el.textContent=text;
-  chat.appendChild(el);
-  while(chat.children.length>maxMessages) chat.firstChild.remove();
-}
-function escapeHtml(s){
-  const d=document.createElement('div'); d.textContent=s; return d.innerHTML;
-}
-function renderEmotes(text, emotes){
-  if(!emotes) return escapeHtml(text);
-  const ranges=[];
-  for(const group of emotes.split('/')){
-    const [id, positions]=group.split(':');
-    if(!positions) continue;
-    for(const range of positions.split(',')){
-      const [a,b]=range.split('-').map(Number);
-      ranges.push({a,b,id});
-    }
-  }
-  ranges.sort((x,y)=>x.a-y.a);
-  let out='', cursor=0;
-  for(const r of ranges){
-    if(r.a<cursor) continue;
-    out+=escapeHtml(text.slice(cursor,r.a));
-    const src='https://static-cdn.jtvnw.net/emoticons/v2/'+r.id+'/default/dark/2.0';
-    out+='<img class="emote" alt="" src="'+src+'">';
-    cursor=r.b+1;
-  }
-  return out+escapeHtml(text.slice(cursor));
+function addSystem(text){const el=document.createElement('div');el.className='system';el.textContent=text;chat.appendChild(el);while(chat.children.length>maxMessages)chat.firstChild.remove()}
+function escapeHtml(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML}
+function renderEmotes(text,emotes){
+ if(!emotes)return escapeHtml(text);const ranges=[];
+ for(const group of emotes.split('/')){const [id,positions]=group.split(':');if(!positions)continue;for(const range of positions.split(',')){const [a,b]=range.split('-').map(Number);ranges.push({a,b,id})}}
+ ranges.sort((x,y)=>x.a-y.a);let out='',cursor=0;
+ for(const r of ranges){if(r.a<cursor)continue;out+=escapeHtml(text.slice(cursor,r.a));const src='https://static-cdn.jtvnw.net/emoticons/v2/'+r.id+'/default/dark/2.0';out+='<img class="emote" alt="" src="'+src+'">';cursor=r.b+1}
+ return out+escapeHtml(text.slice(cursor))
 }
 function addMessage(user,color,text,emotes){
-  const el=document.createElement('div');
-  el.className='message';
-  const safeColor=/^#[0-9a-fA-F]{6}$/.test(color||'')?color:'var(--name)';
-  el.innerHTML='<div class="name" style="color:'+safeColor+'">'+escapeHtml(user)+'</div>'+
-              '<div class="body">'+renderEmotes(text,emotes)+'</div>';
-  chat.appendChild(el);
-  while(chat.children.length>maxMessages) chat.firstChild.remove();
-  if(lifetime){
-    setTimeout(()=>{ if(el.isConnected){el.classList.add('fade');setTimeout(()=>el.remove(),400)}},lifetime*1000);
-  }
+ const el=document.createElement('div');el.className='message';
+ const safeColor=/^#[0-9a-fA-F]{6}$/.test(color||'')?color:'var(--name)';
+ el.innerHTML='<div class="name" style="color:'+safeColor+'">'+escapeHtml(user)+'</div>'+'<div class="body">'+renderEmotes(text,emotes)+'</div>';
+ chat.appendChild(el);while(chat.children.length>maxMessages)chat.firstChild.remove();
+ if(lifetime)setTimeout(()=>{if(el.isConnected){el.classList.add('fade');setTimeout(()=>el.remove(),400)}},lifetime*1000)
 }
-function parseTags(raw){
-  const tags={};
-  for(const item of raw.split(';')){
-    const i=item.indexOf('=');
-    if(i<0) tags[item]='';
-    else tags[item.slice(0,i)]=item.slice(i+1).replace(/\\s/g,' ');
-  }
-  return tags;
-}
+function parseTags(raw){const tags={};for(const item of raw.split(';')){const i=item.indexOf('=');if(i<0)tags[item]='';else tags[item.slice(0,i)]=item.slice(i+1).replace(/\\s/g,' ')}return tags}
 function connect(){
-  if(!channel){
-    addSystem('Agregá ?channel=TU_CANAL a la URL del Browser Source.');
-    return;
-  }
-  const ws=new WebSocket('wss://irc-ws.chat.twitch.tv:443');
-  ws.onopen=()=>{
-    ws.send('CAP REQ :twitch.tv/tags twitch.tv/commands twitch.tv/membership');
-    ws.send('PASS SCHMOOPIIE');
-    ws.send('NICK justinfan'+Math.floor(Math.random()*999999));
-    ws.send('JOIN #'+channel);
-    addSystem('Chat conectado: '+channel);
-  };
-  ws.onmessage=e=>{
-    for(const line of e.data.split('\r\n')){
-      if(!line) continue;
-      if(line.startsWith('PING ')){ws.send('PONG :tmi.twitch.tv');continue;}
-      const match=line.match(/^@([^ ]+) +:([^!]+)!~[^ ]+ +PRIVMSG #[^ ]+ :([\s\S]*)$/);
-      if(!match) continue;
-      const tags=parseTags(match[1]);
-      addMessage(tags['display-name']||match[2],tags.color,match[3],tags.emotes);
-    }
-  };
-  ws.onclose=()=>{addSystem('Chat desconectado. Reintentando...');setTimeout(connect,3000)};
-  ws.onerror=()=>{};
+ const ws=new WebSocket('wss://irc-ws.chat.twitch.tv:443');
+ ws.onopen=()=>{ws.send('CAP REQ :twitch.tv/tags twitch.tv/commands twitch.tv/membership');ws.send('PASS SCHMOOPIIE');ws.send('NICK justinfan'+Math.floor(Math.random()*999999));ws.send('JOIN #'+channel);addSystem('Chat conectado: '+channel)};
+ ws.onmessage=e=>{for(const line of e.data.split('\r\n')){if(!line)continue;if(line.startsWith('PING ')){ws.send('PONG :tmi.twitch.tv');continue}const match=line.match(/^@([^ ]+) +:([^!]+)!~[^ ]+ +PRIVMSG #[^ ]+ :([\s\S]*)$/);if(!match)continue;const tags=parseTags(match[1]);addMessage(tags['display-name']||match[2],tags.color,match[3],tags.emotes)}};
+ ws.onclose=()=>{addSystem('Chat desconectado. Reintentando...');setTimeout(connect,3000)};ws.onerror=()=>{}
 }
 connect();
 </script>
