@@ -128,32 +128,47 @@ function escapeHtml(s){
   return d.innerHTML;
 }
 function renderEmotes(text,emotes){
-  let twitchHtml=escapeHtml(text);
+  const replacements=[];
+
   if(emotes){
-    const ranges=[];
     for(const group of emotes.split('/')){
       const [id,positions]=group.split(':');
       if(!positions)continue;
       for(const range of positions.split(',')){
-        const [a,b]=range.split('-').map(Number);
-        ranges.push({a,b,id});
+        const [start,end]=range.split('-').map(Number);
+        replacements.push({
+          start,
+          end:end+1,
+          html:'<img class="emote" alt="" src="https://static-cdn.jtvnw.net/emoticons/v2/'+id+'/default/dark/2.0">'
+        });
       }
     }
-    ranges.sort((x,y)=>x.a-y.a);
-    let out='',cursor=0;
-    for(const r of ranges){
-      if(r.a<cursor)continue;
-      out+=escapeHtml(text.slice(cursor,r.a));
-      const src='https://static-cdn.jtvnw.net/emoticons/v2/'+r.id+'/default/dark/2.0';
-      out+='<img class="emote" alt="" src="'+src+'">';
-      cursor=r.b+1;
+  }
+
+  if(sevenTV.size){
+    const parts=text.split(/(\\s+)/);
+    let pos=0;
+    for(const part of parts){
+      if(part && !/^\\s+$/.test(part) && sevenTV.has(part)){
+        replacements.push({
+          start:pos,
+          end:pos+part.length,
+          html:'<img class="emote" alt="'+escapeHtml(part)+'" title="'+escapeHtml(part)+'" src="'+sevenTV.get(part)+'">'
+        });
+      }
+      pos+=part.length;
     }
-    twitchHtml=out+escapeHtml(text.slice(cursor));
   }
-  if(sevenTVRegex){
-    return twitchHtml.replace(sevenTVRegex,(match)=>'<img class="emote" alt="'+escapeHtml(match)+'" title="'+escapeHtml(match)+'" src="'+sevenTV.get(match)+'">');
+
+  replacements.sort((x,y)=>x.start-y.start || y.end-x.end);
+  let out='',cursor=0;
+  for(const r of replacements){
+    if(r.start<cursor)continue;
+    out+=escapeHtml(text.slice(cursor,r.start));
+    out+=r.html;
+    cursor=r.end;
   }
-  return twitchHtml;
+  return out+escapeHtml(text.slice(cursor));
 }
 async function loadSevenTV(){
   const addSet=async(setId)=>{
