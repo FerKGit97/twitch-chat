@@ -175,16 +175,10 @@ async function loadSevenTV(){
         const userResponse=await fetch('https://7tv.io/v3/users/twitch/'+encodeURIComponent(twitchId));
         if(userResponse.ok){
           const userData=await userResponse.json();
-          const setId=userData?.emote_set?.id||userData?.emote_sets?.[0]?.id;
-          if(setId){
-            const setResponse=await fetch('https://api.7tv.app/v3/emote-sets/'+encodeURIComponent(setId));
-            if(setResponse.ok){
-              const setData=await setResponse.json();
-              for(const e of (setData.emotes||[])){
-                const id=e.id||e.data?.id, name=e.name;
-                if(id&&name)sevenTV.set(name,'https://cdn.7tv.app/emote/'+id+'/3x.webp');
-              }
-            }
+          const set=userData?.emote_set;
+          for(const e of (set?.emotes||[])){
+            const id=e.id||e.data?.id, name=e.name;
+            if(id&&name)sevenTV.set(name,'https://cdn.7tv.app/emote/'+id+'/3x.webp');
           }
         }
       }
@@ -192,8 +186,10 @@ async function loadSevenTV(){
   }catch(e){}
 
   if(sevenTV.size){
-    const names=[...sevenTV.keys()].sort((a,b)=>b.length-a.length).map(s=>s.replace(/[.*+?^()|[\\]\\\\]/g,'\\\\function addMessage(user,color,text,emotes){'));
-    sevenTVRegex=new RegExp('(?<!\\\\S)('+names.join('|')+')(?!\\\\S)','g');
+    const names=[...sevenTV.keys()]
+      .sort((a,b)=>b.length-a.length)
+      .map(s=>s.replace(/[.*+?^$()|[\\]\\\\]/g,'\\\\$&'));
+    sevenTVRegex=new RegExp('(^|\\\\s)('+names.join('|')+')(?!\\\\S)','g');
   }
 }
 
