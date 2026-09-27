@@ -115,6 +115,32 @@ const chat=document.getElementById('chat');
 const sevenTV=new Map();
 let sevenTVRegex=null;
 
+function sevenTVImageHtml(name,url){
+  return '<img class="emote" alt="'+escapeHtml(name)+'" title="'+escapeHtml(name)+'" src="'+url+'" data-7tv-url="'+url+'" data-7tv-retry="0" onerror="retrySevenTVImage(this)">';
+}
+
+function retrySevenTVImage(img){
+  let retry=Number(img.dataset.sevenTvRetry||img.dataset['7tvRetry']||0);
+  const base=img.dataset['7tvUrl']||img.getAttribute('data-7tv-url');
+  if(!base)return;
+
+  const variants=[
+    base,
+    base.replace('/3x.webp','/2x.webp'),
+    base.replace('/3x.webp','/1x.webp')
+  ];
+
+  if(retry<variants.length-1){
+    retry++;
+    img.dataset['7tvRetry']=String(retry);
+    setTimeout(()=>{ img.src=variants[retry]+'?retry='+Date.now(); },250*retry);
+  }else if(retry<5){
+    retry++;
+    img.dataset['7tvRetry']=String(retry);
+    setTimeout(()=>{ img.src=base+'?retry='+Date.now(); },750);
+  }
+}
+
 function addSystem(text){
   const el=document.createElement('div');
   el.className='system';
@@ -153,7 +179,7 @@ function renderEmotes(text,emotes){
         replacements.push({
           start:pos,
           end:pos+part.length,
-          html:'<img class="emote" alt="'+escapeHtml(part)+'" title="'+escapeHtml(part)+'" src="'+sevenTV.get(part)+'">'
+          html:sevenTVImageHtml(part,sevenTV.get(part))
         });
       }
       pos+=part.length;
