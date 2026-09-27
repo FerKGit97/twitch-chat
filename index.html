@@ -169,10 +169,37 @@ function parseTags(raw){
   const tags={};
   for(const item of raw.split(';')){
     const i=item.indexOf('=');
-    if(i<0)tags[item]='';
-    else tags[item.slice(0,i)]=item.slice(i+1).replace(/\\s/g,' ');
+    const key=i<0?item:item.slice(0,i);
+    const value=i<0?'':item.slice(i+1);
+    tags[key]=value.replace(/\\s/g,' ').replace(/\\n/g,'\n').replace(/\\:/g,':').replace(/\\\\/g,'\\');
   }
   return tags;
+}
+function parseIRC(line){
+  let rest=line, tags={};
+  if(rest.startsWith('@')){
+    const space=rest.indexOf(' ');
+    if(space===-1)return null;
+    tags=parseTags(rest.slice(1,space));
+    rest=rest.slice(space+1);
+  }
+  if(rest.startsWith(':')){
+    const space=rest.indexOf(' ');
+    if(space===-1)return null;
+    rest=rest.slice(space+1);
+  }
+  const commandEnd=rest.indexOf(' ');
+  const command=commandEnd===-1?rest:rest.slice(0,commandEnd);
+  rest=commandEnd===-1?'':rest.slice(commandEnd+1);
+  const params=[];
+  while(rest){
+    if(rest.startsWith(':')){params.push(rest.slice(1));break;}
+    const space=rest.indexOf(' ');
+    if(space===-1){params.push(rest);break;}
+    params.push(rest.slice(0,space));
+    rest=rest.slice(space+1).replace(/^ +/,'');
+  }
+  return {tags,command,params};
 }
 function connect(){
   const ws=new WebSocket('wss://irc-ws.chat.twitch.tv:443');
@@ -180,8 +207,6 @@ function connect(){
     ws.send('CAP REQ :twitch.tv/tags twitch.tv/commands twitch.tv/membership');
     ws.send('PASS SCHMOOPIIE');
     ws.send('NICK justinfan'+Math.floor(Math.random()*999999));
-    ws.send('JOIN #'+channel);
-    addSystem('Chat conectado · '+channel);
   };
   ws.onmessage=e=>{
     for(const line of e.data.split('\r\n')){
@@ -190,10 +215,24 @@ function connect(){
         ws.send('PONG :tmi.twitch.tv');
         continue;
       }
-      const match=line.match(/^@([^ ]+) +:([^!]+)!~[^ ]+ +PRIVMSG #[^ ]+ :([\s\S]*)$/);
-      if(!match)continue;
-      const tags=parseTags(match[1]);
-      addMessage(tags['display-name']||match[2],tags.color,match[3],tags.emotes);
+      const msg=parseIRC(line);
+      if(!msg)continue;
+      if(msg.command==='001'){
+        ws.send('JOIN #'+channel);
+        continue;
+      }
+      if(msg.command==='JOIN'){
+        addSystem('Chat conectado · #'+channel);
+        continue;
+      }
+      if(msg.command==='NOTICE'){
+        addSystem('Twitch: '+(msg.params[msg.params.length-1]||'Error'));
+        continue;
+      }
+      if(msg.command!=='PRIVMSG' || msg.params.length<2)continue;
+      const text=msg.params[msg.params.length-1];
+      const user=msg.tags['display-name']||msg.tags['login']||'Twitch';
+      addMessage(user,msg.tags.color,text,msg.tags.emotes);
     }
   };
   ws.onclose=()=>{
