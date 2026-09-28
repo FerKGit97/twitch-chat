@@ -398,14 +398,7 @@ function connect(){
         ws.send('JOIN #'+channel);
         continue;
       }
-      if(msg.command==='JOIN'){
-        addSystem('Chat conectado · #'+channel);
-        continue;
-      }
-      if(msg.command==='NOTICE'){
-        addSystem('Twitch: '+(msg.params[msg.params.length-1]||'Error'));
-        continue;
-      }
+      
       if(msg.command!=='PRIVMSG' || msg.params.length<2)continue;
       const text=msg.params[msg.params.length-1];
       const user=msg.tags['display-name']||msg.tags['login']||'Twitch';
